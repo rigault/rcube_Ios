@@ -1,0 +1,55 @@
+/* Popup */
+.ios-popup {
+  padding: 0 !important;
+  border-radius: 14px;
+}
+
+/* Container */
+.ios-settings {
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont;
+}
+
+/* Item */
+.ios-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+
+/* Hover / tap */
+.ios-item:hover {
+  background: #f2f2f7;
+}
+
+.ios-item:active {
+  background: #e5e5ea;
+}
+
+/* Emoji */
+.ios-icon {
+  width: 22px;
+  text-align: center;
+  font-size: 18px;
+}
+
+/* Text */
+.ios-label {
+  color: #3a3a3c;
+  font-size: 15px;
+  flex: 1;
+}
+
+/* Separator */
+.ios-separator {
+  height: 1px;
+  background: #e5e5ea;
+  margin-left: 50px; /* aligné avec le texte */
+}
+
