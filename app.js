@@ -27,7 +27,7 @@ window.appState = {
   startEpoch: null,
   model: "GFS",
   timeStep: 1800,
-  currentGrib: "",
+  //currentGrib: "",
   polar: "pol/class40VR.csv",
   wavePolar: "wavepol/polwave.csv",
   forbid: false,
@@ -48,6 +48,7 @@ window.appState = {
   coordFormat: "DMS"
 };
 
+
 /**
  * @typedef {Object} AppState
  * @property {string} apiUrl
@@ -64,6 +65,57 @@ window.appState = {
  * @property {boolean} onlyUV
  * @property {"DMS"|"DM"|"DD"|"BASIC"} coordFormat
  */
+
+// ---- localStorage persistence (iOS/Safari friendly) ----
+
+const STORAGE_KEY = "rcube:session:v1";
+
+function saveSession(state) {
+  try {
+    const payload = {
+      version: 1,
+      savedAt: Date.now(),
+      state
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    return true;
+  } catch (e) {
+    console.warn("saveSession failed:", e);
+    return false;
+  }
+}
+
+function loadSession() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+
+    const payload = JSON.parse(raw);
+    if (!payload || typeof payload !== "object") return null;
+
+    // If you want to handle future migrations:
+    if (payload.version !== 1) {
+      console.warn("Unknown session version:", payload.version);
+      // return null; or migrate...
+    }
+
+    return payload.state ?? null;
+  } catch (e) {
+    console.warn("loadSession failed:", e);
+    return null;
+  }
+}
+
+function clearSession() {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    return true;
+  } catch (e) {
+    console.warn("clearSession failed:", e);
+    return false;
+  }
+}
+
 
 function lockIOSZoomForModal() {
   const meta = document.querySelector('meta[name="viewport"]');
@@ -166,7 +218,7 @@ async function expertSettingsDialog(currentState) {
   };
 
   const cur = { ...defaults, ...(currentState || {}) };
-
+  const type = getDMSType ();
   const html = `
     <div class="settingsBox" style="text-align:left;display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;align-items:center;">
       <label><b>X Wind</b></label>
@@ -210,6 +262,8 @@ async function expertSettingsDialog(currentState) {
           <span style="color:#d00000;">port</span>
         </label>
       </div>
+      <b>Boat Coord.</b></label>
+      <input id="exCoord" type="text" value="${latLonToStr(cur.boat.lat, cur.boat.lon, type)}"/>
     </div>
   `;
 
@@ -264,6 +318,12 @@ async function expertSettingsDialog(currentState) {
       const staminaVR = int("exStamina");
       const initialAmureStr = document.querySelector('input[name="exInitialTack"]:checked')?.value;
       const initialAmure = (initialAmureStr === "1") ? 1 : 0;
+      const exCoordStr = document.getElementById("exCoord").value;
+      const [latDMS, lonDMS] = exCoordStr.split(' - ');
+      const boat = {
+        lat: dmsToDecimal(latDMS.trim()),
+        lon: dmsToDecimal(lonDMS.trim()),
+      };
 
       if (!Number.isFinite(xWind) || xWind <= 0) return Swal.showValidationMessage("X Wind must be a positive number.");
       if (!Number.isFinite(maxWind) || maxWind < 0) return Swal.showValidationMessage("Max Wind must be a non-negative integer.");
@@ -287,8 +347,10 @@ async function expertSettingsDialog(currentState) {
         dayEfficiency,
         nightEfficiency,
         staminaVR,
-        initialAmure
+        initialAmure,
+        boat,
       };
+
     }
   });
 
@@ -457,12 +519,16 @@ async function openSettingsDialog() {
       if (updated) {
         // Apply expert changes at the same level as appState
         Object.assign(window.appState, updated);
+        setStartBoat(appState.boat.lat, appState.boat.lon); 
+        redrawOrthoLines ();
+        saveSession (window.appState);
       }
       // Always return to Settings
       continue;
     }
     if (result.isConfirmed) {
       Object.assign(window.appState, result.value);
+      saveSession (window.appState);
       return; // Exit the whole settings flow
     }
 
@@ -735,6 +801,20 @@ async function openHelpInfo(full = false) {
   });
 }
 
+window.redrawAllWaypoints = function () {
+  // Supprimer tous les markers existants
+  /*for (const m of wpMarkers) {
+    map.removeLayer(m);
+  }
+  wpMarkers.length = 0;
+*/
+  // Recréer les markers depuis l'état
+  for (const wp of appState.waypoints) {
+    addWaypoint(wp.lat, wp.lon);
+  }
+};
+
+
 /* =========================================================
    Main
    ========================================================= */
@@ -749,8 +829,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   initMap();
   await setLandGeoJson(geoFile);
   Swal.update({ title: "Grib Loading…" });
-  Swal.showLoading();    
-
+  Swal.showLoading();
+  const saved = loadSession();
+  if (saved) {
+    appState = { ...appState, ...saved };
+    setStartBoat(saved.boat.lat, saved.boat.lon); 
+    clearWaypoints (); // yes not elegant. We clear all way points then add all waypoints
+    for (const wp of saved.waypoints) {
+      addWaypoint(wp.lat, wp.lon);
+    }
+  }
+  await drawForbidZones();
   // V1.1: preload GRIB once (lighter if onlyUV=true)
   try {
     await ensureGribLoaded(window.appState.model, "", window.appState.onlyUV);
@@ -849,11 +938,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   setTapMode("boat");
 
   // add ports
-  portMarkers.forEach(m => portsLayer.addLayer(m));
-  map.on("zoomend", () => updatePortsVisibility(map));
-
-  updatePortsVisibility(map);
-
-
+  initPorts (map, ports);
 });
 

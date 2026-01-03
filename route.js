@@ -303,7 +303,7 @@ window.player = (function makePlayer() {
       `;
     }
     syncSlider(); 
-}
+  }
 
   function syncSlider() {
     const sl = document.getElementById("routeSlider");
@@ -441,5 +441,6 @@ window.computeRouteAndWind = async function computeRouteAndWind(state) {
   windLayer.set(meta, field);
   windLayer.setRouteState({ t0Epoch: route.t0Epoch, dtRoute: route.dtRoute, k: 0 });
   windLayer.redraw();
+  window.player.gotoBeg();
 };
 

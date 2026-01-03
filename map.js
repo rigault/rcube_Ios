@@ -22,6 +22,86 @@ let orthoLines = []; // Leaflet polylines for great-circle segments
 function fmtNm(x) { return Number.isFinite(x) ? `${x.toFixed(2)} nm` : "—"; }
 function fmtDeg(x) { return Number.isFinite(x) ? `${x.toFixed(0)}°` : "—"; }
 
+/** @type {L.LayerGroup|null} */
+let forbidZonesLayer = null;
+
+/**
+ * Fetch and draw forbidden zones polygons from the server (type=3).
+ * Each polygon is an array of [lat, lon] points.
+ */
+window.drawForbidZones = async function drawForbidZones() {
+  try {
+    // Remove previous forbid zones layer if any
+    if (forbidZonesLayer) {
+      map.removeLayer(forbidZonesLayer);
+      forbidZonesLayer = null;
+    }
+
+    // POST request (form-urlencoded)
+    const res = await fetch("https://rcube.ddns.net/post-api/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      },
+      body: `type=${REQ.FORBID_ZONE}`,
+    });
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    }
+
+    /** @type {Array<Array<[number, number]>>} */
+    const polygons = await res.json();
+
+    // Create a new layer group for all forbid zones
+    forbidZonesLayer = L.layerGroup();
+
+    polygons.forEach((poly, i) => {
+      if (!Array.isArray(poly) || poly.length < 3) return;
+
+      // Remove invalid points and consecutive duplicates
+      const latlngs = [];
+      let prev = null;
+
+      for (const p of poly) {
+        if (!Array.isArray(p) || p.length < 2) continue;
+
+        const lat = Number(p[0]);
+        const lon = Number(p[1]);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+
+        const cur = [lat, lon];
+        if (!prev || prev[0] !== cur[0] || prev[1] !== cur[1]) {
+          latlngs.push(cur);
+          prev = cur;
+        }
+      }
+
+      if (latlngs.length < 3) return;
+
+      // Create and style the polygon
+      const leafletPoly = L.polygon(latlngs, {
+        weight: 2,
+        opacity: 0.9,
+        fillOpacity: 0.25,
+      });
+
+      // Optional popup
+      leafletPoly.bindPopup(`Forbid zone #${i + 1}`);
+
+      leafletPoly.addTo(forbidZonesLayer);
+    });
+
+    // Add all forbid zones to the map
+    forbidZonesLayer.addTo(map);
+
+    return forbidZonesLayer;
+  } catch (err) {
+    console.error("drawForbidZones error:", err);
+    return null;
+  }
+};
+
 /**
  * Rebuild and render orthodromic (great-circle) segments:
  * Boat->WP1, WP1->WP2, ...
@@ -469,6 +549,7 @@ window.setStartBoat = function setStartBoat(lat, lon, tack = 0) {
   lastRouteData = null; // global
   window.player.syncSlider();
   redrawOrthoLines();
+  saveSession(appState);
 };
 
 /**
@@ -558,7 +639,8 @@ window.setBoatFromGPS = function setBoatFromGPS() {
 window.setBoatFromGps = window.setBoatFromGPS;
 
 /**
- * Add a waypoint marker at (lat, lon).
+ * Add a waypoint if does not exist.
+ * Show marker at (lat, lon) whatever
  * Waypoints order matters: last waypoint is destination.
  *
  * @param {number} lat
@@ -566,6 +648,7 @@ window.setBoatFromGps = window.setBoatFromGPS;
  * @returns {void}
  */
 window.addWaypoint = function addWaypoint(lat, lon) {
+  const BIND_POPUP_TIMEOUT = 2000; // ms
   appState.waypoints.push({ lat, lon });
 
   const iWp = appState.waypoints.length - 1; // 0-based
@@ -588,10 +671,16 @@ window.addWaypoint = function addWaypoint(lat, lon) {
   m.on("click", () => {
     m.openPopup();
   });
-
   // Open immediately after adding
   m.openPopup();
+  setTimeout(() => {
+    if (map.hasLayer(m) && m.isPopupOpen()) {
+      m.closePopup();
+    }
+  }, BIND_POPUP_TIMEOUT);
+
   redrawOrthoLines();
+  saveSession(appState);
 };
 
 /**
@@ -620,6 +709,7 @@ window.undoWaypoint = function undoWaypoint() {
     });
   });
   redrawOrthoLines();
+  saveSession(appState);
 };
 
 /**
@@ -643,6 +733,7 @@ window.clearWaypoints = function clearWaypoints() {
   redrawOrthoLines();
   lastRouteData = null; // global
   window.player.syncSlider();
+  saveSession(appState);
 };
 
 function buildBoatSvgHtml(tack = 0) {
