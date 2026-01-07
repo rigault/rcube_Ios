@@ -939,5 +939,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // add ports
   initPorts (map, ports);
+  // add marks
+  getMarks(map);
 });
 
