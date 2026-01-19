@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang = "fr">
+<head>
+<meta charset="UTF-8">
+<title>RCube</title>
+<link rel="stylesheet" type="text/css" href="help4Ios.css">
+</head>
+<body>
+<header> 
+   <a href="#chap1">1. Introduction</a><br>
+   <a href="#chap2">2. Interface</a><br>
+   <a href="#annexe">Annexe</a><br>
+</header>
+
+<h1 id="chap1">1. Introduction</h1>
+	<p>RCube est un logiciel de routage. Il calcule la route allant
+	d’un point origine pOr à un point destination pDest à partir
+	d’une date <samp>START_TIME</samp> en utilisant les fichiers météo Grib et
+	la polaire du bateau.</p>
+
+	<p>La méthode utilisée est celle des isochrones. A partir du
+	point Origine pOr, on calcule tous les points accessibles dans un
+	intervalle de temps <samp>T_STEP</samp>. C’est l’isochrone 0. Puis à partir
+	de cet isochrone 0, on calcule tous les points accessibles dans
+	l’intervalle <samp>T_STEP</samp>. On réitère jusqu’à ce que l’on soit
+	arrivé à la destination pDest lorsque c’est possible
+	(destination reached). Si la couverture de temps météo est
+	insuffisante, on arrête le processus (destination unreached).</p>
+
+	<p>On propose alors une route qui est soit la route optimale allant
+	de pOr à pDest, soit la route allant de pOr au point du dernier
+	isochrone le plus proche de la destination.</p>
+
+	<p>Les fichiers Grib (General Regularly-distributed Information in
+	Binary) sont des fichiers contenant pour un ensemble de coordonnées
+	(lat, lon) des valeurs météorologiques.</p>
+
+	<p>Les valeurs qui nous intéressent sont celles qui influencent le
+	routage.&nbsp;:</p>
+
+	<ul>
+		<li> Le vent à 10 mètres de hauteur,</li>
+		<li>Les vagues.</li>
+	</ul>
+
+	<p>Il existe aussi des fichiers Grib qui donnent la valeur des
+	courants. Ils sont également utilisables par RCube.</p>
+
+	<p>La polaire décrit la vitesse du bateau en fonction de la
+	vitesse du vent réel (TWS&nbsp;: True Wind Speed) et de l’angle
+	du vent avec l’axe du bateau (TWA&nbsp;: True Wind Angle).</p>
+
+	<p>Il existe également des polaires de vagues qui décrivent en
+	fonction de la hauteur des vagues et de l’angle des vagues avec
+	le bateau un coefficient mutiplicateur de la vitesse du bateau.
+	Typiquement, des vagues face au bateau diminueront sa vitesse
+	(exemple 60 %), alors que une vaque arrière l’augmentera
+	(exemple 120 %).</p>
+
+	<p>D’autres paramètres influencent le routage. On peut définir
+	un coefficient <samp>DAY_EFFICIENY</samp> ou
+	<samp>NIGHT_EFFICIENCY</samp> qui traduisent la capacité de
+	l’équipage. 80 % indiquera que la vitesse prise en compte sera
+	de 80% de la vitesse donnée par la polaire du bateau. Il existe
+	deux paramètres&nbsp;: Un pour la nuit et un pour le jour, afin de
+	refléter une efficacité plus faible la nuit.</p>
+
+	<p>Il est également possible de définir un seuil <samp>THRESHOLD</samp>
+	qui définit la vitesse à la voile en dessous de laquelle on
+	passera au moteur. La vitesse au moteur est définie par le paramètre <samp>MOTOR_S</samp>.</p>
+
+	<p>Le paramètre <samp>X_WIND</samp> est un multiplicateur concernant la vitesse
+	du vent. En général, on estimera que le vent qui doit être
+	pris en compte est par exemple de 20&nbsp;% supérieur au vent
+	trouvé dans le fichier Grib. On donnera alors à <samp>X_WIND</samp> la
+	valeur&nbsp;:1.2.</p>
+
+	<p><samp>MAX_WIND</samp> est utilisable pour indiquer une vitesse de vent maximale. Le
+	routage privilégiera une route évitant des vents dont la vitesse
+	excède ce seuil.</p>
+
+	<p><samp>PENALTY0</samp> est le nombre de secondes perdues lors d’un virement de bord.</p>
+
+	<p><samp>PENALTY1</samp> est le nombre de secondes perdues lors d’un empannage.</p>
+	
+	<p><samp>PENALTY2</samp> est le nombre de secondes perdues lors d’un changement de voile.</p>
+
+	<p>Lors du calcul de l’isochrone suivant, <samp>RANGE_COG</samp>
+	définit la l’amplitude -90 à + 90 degrés par rapport à la
+	route directe vers la destination.</p>
+
+	<p><samp>COG_STEP</samp> défini la granularité. Par exemple 5 degré.</p>
+
+<h1 id="chap2">2. Interface</h1>
+
+  <p> Un écran principal affiche la carte. Un zone de contrôle en bas avec la barre d'état. Trois boutons en haut à droite. </p>
+
+<h1 id="annexe">Annexe</h1>
+
+	<p><b>Abréviations&nbsp;</b>:</p>
+	<p>Lat&nbsp;: Latitude</p>
+	<p>Lon&nbsp;: Longitude</p>
+	<p>pOr&nbsp;: Point Origine</p>
+	<p>pDest&nbsp;: Point Destination&nbsp;= last Way Point</p>
+   <p>WP i&nbsp;: Way Point i</p>
+   <p>ETA&nbsp;:Estimated Time of Arrival</p>
+
+	<p><b>Acronymes&nbsp;</b>:</p>
+	<p>TWS&nbsp;: True Wind Speed</p>
+	<p>TWD&nbsp;: True Wind Direction</p>
+	<p>TWA&nbsp;: True Wind Angle - the angle of the boat to the wind</p>
+	<p>SOG&nbsp;: Speed over Ground. Vitesses sur le fond.</p>
+	<p>COG&nbsp;: Course over Ground. Cap sur le fond.</p>
+	<p>AWA&nbsp;: Apparent Wind Angle</p>
+	<p>AWS&nbsp;: Apparent Wind Speed</p>
+	<p>HDG&nbsp;: heading. Angle de l’axe du bateau avec le nord.</p>
+	<p>VMG&nbsp;: Velocity Made Good</p>
+	<p>VMC&nbsp;: Velocity Made On Course</p>
+
+	<p><i>Au près&nbsp;: Vmg = cos (twa) * tws.</i></p>
+
+   <p><b>Conventions&nbsp;</b>:</p>
+	<p>Les distances sont en miles nautiques.</p>
+	<p>Les vitesses sont en nœuds.</p>
+	<p>Les fichiers Grib donnent les vitesses en mètres/seconde.</p>
+
+<footer>
+René Rigault, 2025
+</footer>
+
+</body>
+</html>

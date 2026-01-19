@@ -45,7 +45,7 @@ window.appState = {
   nightEfficiency: 1.0,
   staminaVR: 100,
   initialAmure: 0,
-  coordFormat: "DMS"
+  coordFormat: DMS_DISPLAY.DMS
 };
 
 
@@ -63,7 +63,7 @@ window.appState = {
  * @property {boolean} withWaves
  * @property {boolean} withCurrent
  * @property {boolean} onlyUV
- * @property {"DMS"|"DM"|"DD"|"BASIC"} coordFormat
+ * @property {DMS|DM|DD|BASIC} coordFormat
  */
 
 // ---- localStorage persistence (iOS/Safari friendly) ----
@@ -115,7 +115,6 @@ function clearSession() {
     return false;
   }
 }
-
 
 function lockIOSZoomForModal() {
   const meta = document.querySelector('meta[name="viewport"]');
@@ -358,6 +357,14 @@ async function expertSettingsDialog(currentState) {
   return result.value;
 }
 
+/*
+ * Returns DMS type (integer) based on coordFormat
+ * @returns {number}
+ */
+function getDMSType () {
+  return Number(appState?.coordFormat ?? DMS_DISPLAY.DMS);
+}
+
 /**
  * Build SweetAlert2 HTML content for Settings dialog.
  * @param {string[]} polarNames
@@ -370,18 +377,6 @@ function buildSettingsHtml(polarNames, wavePolarNames) {
     { label: "1 h", sec: 3600 },
     { label: "3 h", sec: 10800 }
   ];
-
-  const coordOptions = [
-    { label: "DMS (48°51'24\"N)", val: "DMS" },
-    { label: "DM  (48°51.40'N)", val: "DM" },
-    { label: "DD  (48.8566° N)", val: "DD" },
-    { label: "BASIC (-48.8566)", val: "BASIC" }
-  ];
-
-  const coordOpts = coordOptions.map(o =>
-    `<option value="${o.val}" ${window.appState.coordFormat === o.val ? "selected" : ""}>${o.label}</option>`
-  ).join("");
-
 
   const modelOpts = models.map(m =>
     `<option value="${m}" ${window.appState.model === m ? "selected" : ""}>${m}</option>`
@@ -404,6 +399,7 @@ function buildSettingsHtml(polarNames, wavePolarNames) {
   const forbidChecked = window.appState.forbid ? "checked" : "";
   const wavesChecked = window.appState.withWaves ? "checked" : "";
   const currentChecked = window.appState.withCurrent ? "checked" : "";
+  const type = getDMSType();
 
   return `
   <div class="settingsBox" style="text-align:left;display:grid;gap:10px;">
@@ -446,7 +442,12 @@ function buildSettingsHtml(polarNames, wavePolarNames) {
     
     <div>
       <label><b>Coord format</b></label>
-      <select id="setCoordFmt">${coordOpts}</select>
+      <select id="setCoordFmt">
+        <option value="${DMS_DISPLAY.DMS}"${type === DMS_DISPLAY.DMS ? " selected" : ""}>DMS</option>
+        <option value="${DMS_DISPLAY.DM}"${type === DMS_DISPLAY.DM ? " selected" : ""}>DM</option>
+        <option value="${DMS_DISPLAY.DD}"${type === DMS_DISPLAY.DD ? " selected" : ""}>DD</option>
+        <option value="${DMS_DISPLAY.BASIC}"${type === DMS_DISPLAY.BASIC ? " selected" : ""}>BASIC</option>
+      </select>
     </div>
   </div>`;
 }
@@ -511,7 +512,7 @@ async function openSettingsDialog() {
         forbid: document.getElementById("setForbid").checked,
         withWaves: document.getElementById("setWaves").checked,
         withCurrent: document.getElementById("setCurrent").checked,
-        coordFormat: document.getElementById("setCoordFmt").value
+        coordFormat: Number(document.getElementById("setCoordFmt").value)
       })
     });
     if (result.isDenied) {
@@ -556,10 +557,8 @@ function handleViewMenuAction(action) {
       window.gribInfo("currentgrib", "", window.lastCurrentGribFile);
       break;
     case 'viewRoute':
-      window.showRouteReport(window.lastRouteData);
-      break;
-    case 'dumpRoute':
-      window.dumpRoute(window.lastRouteData, getDMSType (), 1);
+      const type = getDMSType (); 
+      window.showRouteReport(window.lastRouteData, type);
       break;
   }
 }
@@ -601,10 +600,6 @@ async function openViewMenu() {
 
       <div class="ios-item" data-action="viewRoute">
         <span class="ios-icon">🗺️</span><span class="ios-label">Route View</span>
-      </div>
-
-      <div class="ios-item" data-action="dumpRoute">
-        <span class="ios-icon">📤</span><span class="ios-label">Route Dump</span>
       </div>
     </div>
   `;

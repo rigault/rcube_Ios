@@ -69,7 +69,7 @@ function encodeWaypoints(wps) {
  * @returns {string}
  */
 function buildRoutePostBody(state) {
-  const boatName = "banane";
+  const boatName = "noname";
 
   const boatStr = `boat=${boatName},${state.boat.lat},${state.boat.lon};`;
   const wpsStr = `waypoints=${encodeWaypoints(state.waypoints)}`;
@@ -85,7 +85,7 @@ function buildRoutePostBody(state) {
   parts.push(`timeStep=${state.timeStep}`);                 // 900 | 1800 | 3600 | 10800
   parts.push(`polar=${state.polar}`);                       // pol/<name>
   parts.push(`wavePolar=${state.wavePolar}`);               // wavepolar name
-  parts.push(`currentGrib=${state.currentGrib}`);           // current grib name
+  // parts.push(`currentGrib=${state.currentGrib}`);           // current grib name
   parts.push(`forbid=${state.forbid ? "true" : "false"}`);  // true | false
   parts.push(`withWaves=${state.withWaves ? "true" : "false"}`);  // true | false
   parts.push(`withCurrent=${state.withCurrent ? "true" : "false"}`);  // true | false
@@ -150,36 +150,16 @@ function parseRouteResponse(json) {
   if (json._Error) {
     throw new Error(`Server error: ${json._Error}`);
   }
-
-  // Find first entry that looks like a boat result with a track
-  let foundKey = null;
-  for (const [k, v] of Object.entries(json)) {
-    if (v && typeof v === "object" && Array.isArray(v.track) && v.track.length > 0) {
-      foundKey = k;
-      break;
-    }
-  }
-
-  if (!foundKey) {
-    const keys = Object.keys(json);
-    const preview = JSON.stringify(json).slice(0, 800);
-    throw new Error(`Invalid route response: missing track. Keys=${keys.join(", ")} Preview=${preview}`);
-  }
-
-  const r = json[foundKey];
-
-  const t0Epoch = r.epochStart;
-  const dtRoute = r.isocTimeStep;
+  const t0Epoch = json.epochStart;
+  const dtRoute = json.isocTimeStep;
 
   if (!Number.isFinite(t0Epoch) || !Number.isFinite(dtRoute)) {
     throw new Error("Invalid route response: missing epochStart/isocTimeStep");
   }
 
-  const pts = r.track.map(row => ({ lat: row[1], lon: row[2], t: t0Epoch + row[3] }));
-  const currentGrib = r.currentGrib || "";
-  const gribName = r.grib || "";
-
-
+  const pts = json.track.map(row => ({ lat: row[1], lon: row[2], t: t0Epoch + row[3] }));
+  const currentGrib = json.currentGrib || "";
+  const gribName = json.grib || "";
 
   return { t0Epoch, dtRoute, pts, gribName, currentGrib };
 }
@@ -222,8 +202,8 @@ window.player = (function makePlayer() {
   /**
    * Returns the first boat object stored in `lastRouteData` without assuming its name.
    *
-   * @param {object} lastRouteData - The raw JSON object returned by the server (may contain multiple boats).
-   * @returns {object|null} The first boat entry (e.g. lastRouteData["banane"]) or null if not found.
+   * @param {object} lastRouteData - 
+   * @returns {object|null}
    */
   function getFirstBoatData(lastRouteData) {
     if (!lastRouteData || typeof lastRouteData !== "object") return null;
@@ -231,7 +211,7 @@ window.player = (function makePlayer() {
     const keys = Object.keys(lastRouteData);
     if (keys.length === 0) return null;
 
-    const boat = lastRouteData[keys[0]];
+    const boat = lastRouteData; //[keys[0]];
     return (boat && typeof boat === "object") ? boat : null;
 }
 
